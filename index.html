@@ -180,6 +180,49 @@
       font-size: 0.9rem;
     }
 
+    /* Warning box */
+    .warning {
+      background: #fff8e6;
+      border: 1px solid #f0c040;
+      color: #806000;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+
+    /* Model selector */
+    .model-selector {
+      margin-bottom: 16px;
+    }
+
+    .model-selector label {
+      display: block;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .model-selector select {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+    }
+
+    /* Retry button */
+    .retry-btn {
+      margin-top: 12px;
+      background: #cc6600;
+    }
+
+    .retry-btn:hover:not(:disabled) {
+      background: #a35200;
+    }
+
     /* Hidden class */
     .hidden {
       display: none !important;
@@ -197,6 +240,16 @@
     <div class="info" id="info-box">
       Dit model draait volledig lokaal in je browser via WebGPU.
       Geen data wordt naar een server gestuurd.
+    </div>
+
+    <!-- Model selector -->
+    <div class="model-selector">
+      <label for="model-select">Kies een model:</label>
+      <select id="model-select">
+        <option value="SmolLM2-135M-Instruct-q4f16_1-MLC" selected>SmolLM2 135M (klein, ~100MB, snel)</option>
+        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5 0.5B (~350MB, beter)</option>
+        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5 Mini (~2GB, best)</option>
+      </select>
     </div>
 
     <!-- Main button -->
@@ -231,6 +284,11 @@
     const progressPercentage = document.getElementById("progress-percentage");
     const progressStatus = document.getElementById("progress-status");
     const infoBox = document.getElementById("info-box");
+    const modelSelect = document.getElementById("model-select");
+
+    // Keep track of loaded engine for reuse
+    let cachedEngine = null;
+    let cachedModelId = null;
 
     // Check WebGPU support
     function checkWebGPU() {
@@ -244,7 +302,7 @@
       return { supported: true };
     }
 
-    // Show error message
+    // Show error message (fatal - disables button)
     function showError(title, message) {
       errorContainer.innerHTML = `
         <div class="error">
@@ -255,6 +313,11 @@
       errorContainer.classList.remove("hidden");
       button.disabled = true;
       infoBox.classList.add("hidden");
+    }
+
+    // Show retry error (non-fatal - shows retry button)
+    function showRetryError(title, message) {
+      output.innerHTML = `<strong style="color: #900;">${title}</strong>\n${message}\n\n<button class="retry-btn" onclick="location.reload()" style="padding: 10px 20px; background: #cc6600; color: white; border: none; border-radius: 6px; cursor: pointer;">Probeer opnieuw</button>`;
     }
 
     // Update progress UI
@@ -297,22 +360,37 @@
 
     // Main chat function
     async function runChat() {
+      const selectedModel = modelSelect.value;
+
       button.disabled = true;
+      modelSelect.disabled = true;
       output.textContent = "";
       output.classList.remove("typing");
       progressSection.classList.add("visible");
       updateProgress(0, "Model initialiseren...");
 
-      let engine = null;
+      let engine = cachedEngine;
 
       try {
-        // Create engine with progress callback
-        engine = await webllm.CreateMLCEngine("Phi-3.5-mini-instruct-q4f16_1-MLC", {
-          initProgressCallback: (report) => {
-            console.log("Init progress:", report);
-            updateProgress(report.progress, report.text);
-          }
-        });
+        // Only reload if model changed or no engine cached
+        if (!engine || cachedModelId !== selectedModel) {
+          console.log(`Loading model: ${selectedModel}`);
+
+          // Create engine with progress callback
+          engine = await webllm.CreateMLCEngine(selectedModel, {
+            initProgressCallback: (report) => {
+              console.log("Init progress:", report);
+              updateProgress(report.progress, report.text);
+            }
+          });
+
+          // Cache for reuse
+          cachedEngine = engine;
+          cachedModelId = selectedModel;
+        } else {
+          console.log("Using cached engine");
+          updateProgress(1, "Model al geladen!");
+        }
 
         // Update UI for generation phase
         progressSection.classList.remove("visible");
@@ -343,20 +421,37 @@
         progressSection.classList.remove("visible");
         output.classList.remove("typing");
 
-        let errorMessage = error.message || "Onbekende fout";
+        // Clear cached engine on error
+        cachedEngine = null;
+        cachedModelId = null;
 
-        // Provide more helpful error messages
-        if (errorMessage.includes("WebGPU")) {
-          errorMessage = "WebGPU fout: " + errorMessage;
-        } else if (errorMessage.includes("fetch") || errorMessage.includes("network")) {
-          errorMessage = "Netwerkfout bij het laden van het model. Controleer je internetverbinding.";
-        } else if (errorMessage.includes("memory") || errorMessage.includes("OOM")) {
-          errorMessage = "Onvoldoende geheugen. Sluit andere tabbladen en probeer opnieuw.";
+        const errorMsg = error.message || String(error);
+
+        // Detect specific error types
+        if (errorMsg.includes("Load failed") || errorMsg.includes("fetch")) {
+          showRetryError(
+            "Download mislukt",
+            `Het model kon niet volledig worden gedownload. Dit kan gebeuren bij:\n• Trage of onstabiele internetverbinding\n• Model te groot voor je apparaat\n• Browser timeout\n\nTip: Probeer een kleiner model (SmolLM2) of ververs de pagina.`
+          );
+        } else if (errorMsg.includes("memory") || errorMsg.includes("OOM") || errorMsg.includes("allocation")) {
+          showRetryError(
+            "Onvoldoende geheugen",
+            `Je apparaat heeft niet genoeg geheugen voor dit model.\n\nOplossingen:\n• Sluit andere tabbladen en apps\n• Kies een kleiner model\n• Probeer op een desktop/laptop`
+          );
+        } else if (errorMsg.includes("WebGPU") || errorMsg.includes("GPU")) {
+          showRetryError(
+            "WebGPU fout",
+            `Er is een probleem met de GPU.\n\n${errorMsg}\n\nProbeer de pagina te verversen.`
+          );
+        } else {
+          showRetryError(
+            "Fout opgetreden",
+            `${errorMsg}\n\nProbeer de pagina te verversen of kies een ander model.`
+          );
         }
-
-        output.textContent = `Fout: ${errorMessage}`;
       } finally {
         button.disabled = false;
+        modelSelect.disabled = false;
       }
     }
 
