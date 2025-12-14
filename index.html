@@ -273,7 +273,8 @@
   </div>
 
   <script type="module">
-    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+    // Use jsdelivr CDN (often more reliable than esm.run)
+    import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm";
 
     // DOM elements
     const output = document.getElementById("output");
@@ -289,6 +290,8 @@
     // Keep track of loaded engine for reuse
     let cachedEngine = null;
     let cachedModelId = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
 
     // Check WebGPU support
     function checkWebGPU() {
@@ -316,8 +319,15 @@
     }
 
     // Show retry error (non-fatal - shows retry button)
-    function showRetryError(title, message) {
-      output.innerHTML = `<strong style="color: #900;">${title}</strong>\n${message}\n\n<button class="retry-btn" onclick="location.reload()" style="padding: 10px 20px; background: #cc6600; color: white; border: none; border-radius: 6px; cursor: pointer;">Probeer opnieuw</button>`;
+    function showRetryError(title, message, canRetry = true) {
+      const retryBtn = canRetry
+        ? `<button id="retry-btn" style="padding: 10px 20px; background: #cc6600; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 12px;">Opnieuw proberen</button>`
+        : `<button onclick="location.reload()" style="padding: 10px 20px; background: #cc6600; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 12px;">Pagina verversen</button>`;
+      output.innerHTML = `<strong style="color: #900;">${title}</strong>\n${message}\n\n${retryBtn}`;
+
+      if (canRetry) {
+        document.getElementById("retry-btn").onclick = () => runChat();
+      }
     }
 
     // Update progress UI
@@ -416,6 +426,9 @@
 
         output.classList.remove("typing");
 
+        // Reset retry count on success
+        retryCount = 0;
+
       } catch (error) {
         console.error("Error:", error);
         progressSection.classList.remove("visible");
@@ -428,15 +441,30 @@
         const errorMsg = error.message || String(error);
 
         // Detect specific error types
-        if (errorMsg.includes("Load failed") || errorMsg.includes("fetch")) {
+        if (errorMsg.includes("Load failed") || errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("Failed to fetch")) {
+          // Auto-retry for network errors
+          if (retryCount < MAX_RETRIES) {
+            retryCount++;
+            const delay = retryCount * 2000; // 2s, 4s
+            updateProgress(0, `Download mislukt. Automatisch opnieuw proberen (${retryCount}/${MAX_RETRIES}) over ${delay/1000}s...`);
+            output.textContent = `Download onderbroken. Automatisch opnieuw proberen (${retryCount}/${MAX_RETRIES})...`;
+
+            setTimeout(() => {
+              runChat();
+            }, delay);
+            return; // Don't re-enable button yet
+          }
+
           showRetryError(
             "Download mislukt",
-            `Het model kon niet volledig worden gedownload. Dit kan gebeuren bij:\n• Trage of onstabiele internetverbinding\n• Model te groot voor je apparaat\n• Browser timeout\n\nTip: Probeer een kleiner model (SmolLM2) of ververs de pagina.`
+            `Het model kon niet worden gedownload na ${MAX_RETRIES} pogingen.\n\nMogelijke oorzaken:\n• Trage of onstabiele internetverbinding\n• Hugging Face servers tijdelijk onbereikbaar\n• Browser/netwerk timeout\n\nTip: Wacht even en probeer opnieuw.`
           );
+          retryCount = 0;
         } else if (errorMsg.includes("memory") || errorMsg.includes("OOM") || errorMsg.includes("allocation")) {
           showRetryError(
             "Onvoldoende geheugen",
-            `Je apparaat heeft niet genoeg geheugen voor dit model.\n\nOplossingen:\n• Sluit andere tabbladen en apps\n• Kies een kleiner model\n• Probeer op een desktop/laptop`
+            `Je apparaat heeft niet genoeg geheugen voor dit model.\n\nOplossingen:\n• Sluit andere tabbladen en apps\n• Kies een kleiner model\n• Probeer op een desktop/laptop`,
+            false
           );
         } else if (errorMsg.includes("WebGPU") || errorMsg.includes("GPU")) {
           showRetryError(
