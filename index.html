@@ -2,36 +2,369 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Edge NLP Hello World</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 16px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      color: #222;
+    }
+
+    /* Error message styling */
+    .error {
+      background: #fee;
+      border: 1px solid #c00;
+      color: #900;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .error h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+    }
+
+    .error p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    /* Button styling - large touch targets */
+    button {
+      width: 100%;
+      padding: 16px 24px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      min-height: 52px;
+      transition: background 0.2s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #0052a3;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    /* Progress section */
+    .progress-section {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .progress-section.visible {
+      display: block;
+    }
+
+    .progress-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-container {
+      background: #e0e0e0;
+      border-radius: 8px;
+      height: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, #0066cc, #00aaff);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 8px;
+    }
+
+    .progress-percentage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .progress-status {
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 8px;
+      min-height: 1.5em;
+      word-break: break-word;
+    }
+
+    /* Output section */
+    .output-section {
+      margin-top: 20px;
+    }
+
+    .output-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    #output {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 100px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    #output:empty::before {
+      content: "Klik op de knop om te starten...";
+      color: #999;
+      font-style: italic;
+    }
+
+    /* Cursor animation for streaming */
+    .typing::after {
+      content: "▊";
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* Info box */
+    .info {
+      background: #e8f4ff;
+      border: 1px solid #b8d4ff;
+      color: #0055aa;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
-  <h1>Edge NLP – Hello World</h1>
-  <button id="run">Zeg hallo</button>
-  <pre id="output"></pre>
+  <div class="container">
+    <h1>Edge NLP – Hello World</h1>
+
+    <!-- Error container (hidden by default) -->
+    <div id="error-container" class="hidden"></div>
+
+    <!-- Info box -->
+    <div class="info" id="info-box">
+      Dit model draait volledig lokaal in je browser via WebGPU.
+      Geen data wordt naar een server gestuurd.
+    </div>
+
+    <!-- Main button -->
+    <button id="run">Zeg hallo</button>
+
+    <!-- Progress section -->
+    <div class="progress-section" id="progress-section">
+      <div class="progress-label">Model laden...</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+        <span class="progress-percentage" id="progress-percentage">0%</span>
+      </div>
+      <div class="progress-status" id="progress-status">Initialiseren...</div>
+    </div>
+
+    <!-- Output section -->
+    <div class="output-section">
+      <div class="output-label">Antwoord:</div>
+      <pre id="output"></pre>
+    </div>
+  </div>
 
   <script type="module">
     import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
+    // DOM elements
     const output = document.getElementById("output");
     const button = document.getElementById("run");
+    const errorContainer = document.getElementById("error-container");
+    const progressSection = document.getElementById("progress-section");
+    const progressBar = document.getElementById("progress-bar");
+    const progressPercentage = document.getElementById("progress-percentage");
+    const progressStatus = document.getElementById("progress-status");
+    const infoBox = document.getElementById("info-box");
 
-    button.onclick = async () => {
-      output.textContent = "Model laden… (eerste keer duurt even)";
+    // Check WebGPU support
+    function checkWebGPU() {
+      if (!("gpu" in navigator)) {
+        return {
+          supported: false,
+          reason: "WebGPU niet beschikbaar",
+          details: "Je browser ondersteunt geen WebGPU. Probeer Chrome 113+, Edge 113+, of Safari 18+ (macOS Sonoma / iOS 18)."
+        };
+      }
+      return { supported: true };
+    }
 
-      const engine = new webllm.MLCEngine();
+    // Show error message
+    function showError(title, message) {
+      errorContainer.innerHTML = `
+        <div class="error">
+          <h2>${title}</h2>
+          <p>${message}</p>
+        </div>
+      `;
+      errorContainer.classList.remove("hidden");
+      button.disabled = true;
+      infoBox.classList.add("hidden");
+    }
 
-      // Klein, snel model – perfect voor demo
-      await engine.reload("phi-2-q4f16_1");
+    // Update progress UI
+    function updateProgress(progress, text) {
+      const percent = Math.round(progress * 100);
+      progressBar.style.width = `${percent}%`;
+      progressPercentage.textContent = `${percent}%`;
+      progressStatus.textContent = text || "Laden...";
+    }
 
-      const reply = await engine.chat.completions.create({
-        messages: [
-          { role: "system", content: "Je bent een vriendelijk lokaal model." },
-          { role: "user", content: "Zeg hallo vanuit de browser." }
-        ],
-      });
+    // Initialize on page load
+    async function init() {
+      // Check WebGPU
+      const webgpuCheck = checkWebGPU();
+      if (!webgpuCheck.supported) {
+        showError(webgpuCheck.reason, webgpuCheck.details);
+        return;
+      }
 
-      output.textContent = reply.choices[0].message.content;
-    };
+      // Try to get adapter to verify WebGPU actually works
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          showError(
+            "WebGPU niet beschikbaar",
+            "Je browser ondersteunt WebGPU, maar er is geen geschikte GPU gevonden. Controleer of je GPU-drivers up-to-date zijn."
+          );
+          return;
+        }
+      } catch (e) {
+        showError(
+          "WebGPU fout",
+          `Kon WebGPU niet initialiseren: ${e.message}`
+        );
+        return;
+      }
+
+      console.log("WebGPU is beschikbaar en werkt.");
+    }
+
+    // Main chat function
+    async function runChat() {
+      button.disabled = true;
+      output.textContent = "";
+      output.classList.remove("typing");
+      progressSection.classList.add("visible");
+      updateProgress(0, "Model initialiseren...");
+
+      let engine = null;
+
+      try {
+        // Create engine with progress callback
+        engine = await webllm.CreateMLCEngine("Phi-3.5-mini-instruct-q4f16_1-MLC", {
+          initProgressCallback: (report) => {
+            console.log("Init progress:", report);
+            updateProgress(report.progress, report.text);
+          }
+        });
+
+        // Update UI for generation phase
+        progressSection.classList.remove("visible");
+        output.classList.add("typing");
+
+        // Create chat completion with streaming
+        const stream = await engine.chat.completions.create({
+          messages: [
+            { role: "system", content: "Je bent een vriendelijk lokaal model dat in de browser draait. Houd je antwoorden kort en bondig." },
+            { role: "user", content: "Zeg hallo vanuit de browser en vertel kort wat je bent." }
+          ],
+          stream: true,
+          max_tokens: 150
+        });
+
+        // Stream tokens to output
+        let fullResponse = "";
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content || "";
+          fullResponse += delta;
+          output.textContent = fullResponse;
+        }
+
+        output.classList.remove("typing");
+
+      } catch (error) {
+        console.error("Error:", error);
+        progressSection.classList.remove("visible");
+        output.classList.remove("typing");
+
+        let errorMessage = error.message || "Onbekende fout";
+
+        // Provide more helpful error messages
+        if (errorMessage.includes("WebGPU")) {
+          errorMessage = "WebGPU fout: " + errorMessage;
+        } else if (errorMessage.includes("fetch") || errorMessage.includes("network")) {
+          errorMessage = "Netwerkfout bij het laden van het model. Controleer je internetverbinding.";
+        } else if (errorMessage.includes("memory") || errorMessage.includes("OOM")) {
+          errorMessage = "Onvoldoende geheugen. Sluit andere tabbladen en probeer opnieuw.";
+        }
+
+        output.textContent = `Fout: ${errorMessage}`;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    // Event listeners
+    button.onclick = runChat;
+
+    // Run init check
+    init();
   </script>
 </body>
 </html>
