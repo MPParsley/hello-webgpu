@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edge NLP Hello World</title>
+  <title>Edge NLP Chat</title>
   <style>
     * {
       box-sizing: border-box;
@@ -16,15 +16,19 @@
       padding: 16px;
       background: #f5f5f5;
       color: #333;
+      min-height: 100vh;
     }
 
     .container {
-      max-width: 600px;
+      max-width: 700px;
       margin: 0 auto;
       background: white;
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 32px);
     }
 
     h1 {
@@ -53,33 +57,47 @@
       font-size: 0.95rem;
     }
 
-    /* Button styling - large touch targets */
-    button {
-      width: 100%;
-      padding: 16px 24px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      background: #0066cc;
-      color: white;
-      border: none;
+    /* Info box */
+    .info {
+      background: #e8f4ff;
+      border: 1px solid #b8d4ff;
+      color: #0055aa;
+      padding: 12px;
       border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+
+    /* Model selector */
+    .model-selector {
+      margin-bottom: 16px;
+    }
+
+    .model-selector label {
+      display: block;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .model-selector select {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
       cursor: pointer;
-      min-height: 52px;
-      transition: background 0.2s;
     }
 
-    button:hover:not(:disabled) {
-      background: #0052a3;
-    }
-
-    button:disabled {
-      background: #999;
+    .model-selector select:disabled {
+      background: #f0f0f0;
       cursor: not-allowed;
     }
 
     /* Progress section */
     .progress-section {
-      margin-top: 20px;
+      margin-bottom: 16px;
       display: none;
     }
 
@@ -127,41 +145,74 @@
       word-break: break-word;
     }
 
-    /* Output section */
-    .output-section {
-      margin-top: 20px;
+    /* Chat container */
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 300px;
     }
 
-    .output-label {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 8px;
-    }
-
-    #output {
-      background: #f9f9f9;
+    /* Chat messages */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
       border: 1px solid #ddd;
       border-radius: 8px;
       padding: 16px;
-      min-height: 100px;
-      white-space: pre-wrap;
+      margin-bottom: 16px;
+      background: #fafafa;
+      min-height: 200px;
+      max-height: 400px;
+    }
+
+    .message {
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 85%;
       word-wrap: break-word;
-      font-family: inherit;
-      font-size: 1rem;
-      line-height: 1.5;
-      margin: 0;
     }
 
-    #output:empty::before {
-      content: "Klik op de knop om te starten...";
-      color: #999;
-      font-style: italic;
+    .message:last-child {
+      margin-bottom: 0;
     }
 
-    /* Cursor animation for streaming */
-    .typing::after {
+    .message.user {
+      background: #0066cc;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant {
+      background: #e9e9e9;
+      color: #333;
+      margin-right: auto;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.assistant.typing::after {
       content: "▊";
       animation: blink 0.8s infinite;
+    }
+
+    .message-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      opacity: 0.7;
+    }
+
+    .message-content {
+      white-space: pre-wrap;
+    }
+
+    .empty-chat {
+      color: #999;
+      text-align: center;
+      padding: 40px;
+      font-style: italic;
     }
 
     @keyframes blink {
@@ -169,69 +220,92 @@
       51%, 100% { opacity: 0; }
     }
 
-    /* Info box */
-    .info {
-      background: #e8f4ff;
-      border: 1px solid #b8d4ff;
-      color: #0055aa;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      font-size: 0.9rem;
+    /* Input section */
+    .input-section {
+      display: flex;
+      gap: 12px;
     }
 
-    /* Warning box */
-    .warning {
-      background: #fff8e6;
-      border: 1px solid #f0c040;
-      color: #806000;
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 12px;
-      font-size: 0.85rem;
-    }
-
-    /* Model selector */
-    .model-selector {
-      margin-bottom: 16px;
-    }
-
-    .model-selector label {
-      display: block;
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 6px;
-    }
-
-    .model-selector select {
-      width: 100%;
-      padding: 12px;
+    .input-section textarea {
+      flex: 1;
+      padding: 14px;
       font-size: 1rem;
       border: 1px solid #ccc;
       border-radius: 8px;
-      background: white;
-      cursor: pointer;
+      resize: none;
+      font-family: inherit;
+      min-height: 52px;
+      max-height: 120px;
     }
 
-    /* Retry button */
-    .retry-btn {
+    .input-section textarea:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+
+    .input-section textarea:disabled {
+      background: #f0f0f0;
+    }
+
+    .input-section button {
+      width: auto;
+      padding: 14px 24px;
+      min-width: 100px;
+    }
+
+    /* Clear button */
+    .clear-btn {
+      background: #666;
       margin-top: 12px;
-      background: #cc6600;
+      padding: 10px 16px !important;
+      font-size: 0.9rem !important;
+      min-height: 40px !important;
     }
 
-    .retry-btn:hover:not(:disabled) {
-      background: #a35200;
+    .clear-btn:hover:not(:disabled) {
+      background: #555;
     }
 
     /* Hidden class */
     .hidden {
       display: none !important;
     }
+
+    /* Status indicator */
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+    }
+
+    .status-dot.ready {
+      background: #4caf50;
+    }
+
+    .status-dot.loading {
+      background: #ff9800;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Edge NLP – Hello World</h1>
+    <h1>Edge NLP Chat</h1>
 
     <!-- Error container (hidden by default) -->
     <div id="error-container" class="hidden"></div>
@@ -252,9 +326,6 @@
       </select>
     </div>
 
-    <!-- Main button -->
-    <button id="run">Zeg hallo</button>
-
     <!-- Progress section -->
     <div class="progress-section" id="progress-section">
       <div class="progress-label">Model laden...</div>
@@ -265,20 +336,45 @@
       <div class="progress-status" id="progress-status">Initialiseren...</div>
     </div>
 
-    <!-- Output section -->
-    <div class="output-section">
-      <div class="output-label">Antwoord:</div>
-      <pre id="output"></pre>
+    <!-- Status indicator -->
+    <div class="status-indicator" id="status-indicator">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Model niet geladen</span>
+    </div>
+
+    <!-- Chat container -->
+    <div class="chat-container">
+      <!-- Chat messages -->
+      <div class="chat-messages" id="chat-messages">
+        <div class="empty-chat" id="empty-chat">
+          Start een gesprek door een bericht te typen...
+        </div>
+      </div>
+
+      <!-- Input section -->
+      <div class="input-section">
+        <textarea
+          id="user-input"
+          placeholder="Typ je bericht..."
+          rows="1"
+          disabled
+        ></textarea>
+        <button id="send-btn" disabled>Verstuur</button>
+      </div>
+
+      <!-- Clear button -->
+      <button id="clear-btn" class="clear-btn">Gesprek wissen</button>
     </div>
   </div>
 
   <script type="module">
-    // Use jsdelivr CDN (often more reliable than esm.run)
     import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm";
 
     // DOM elements
-    const output = document.getElementById("output");
-    const button = document.getElementById("run");
+    const chatMessages = document.getElementById("chat-messages");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const clearBtn = document.getElementById("clear-btn");
     const errorContainer = document.getElementById("error-container");
     const progressSection = document.getElementById("progress-section");
     const progressBar = document.getElementById("progress-bar");
@@ -286,12 +382,19 @@
     const progressStatus = document.getElementById("progress-status");
     const infoBox = document.getElementById("info-box");
     const modelSelect = document.getElementById("model-select");
+    const statusDot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
+    const emptyChat = document.getElementById("empty-chat");
 
-    // Keep track of loaded engine for reuse
+    // State
     let cachedEngine = null;
     let cachedModelId = null;
     let retryCount = 0;
     const MAX_RETRIES = 2;
+    let isGenerating = false;
+    let conversationHistory = [
+      { role: "system", content: "Je bent een vriendelijke en behulpzame AI-assistent die lokaal in de browser draait. Houd je antwoorden bondig maar informatief. Antwoord in het Nederlands tenzij de gebruiker een andere taal gebruikt." }
+    ];
 
     // Check WebGPU support
     function checkWebGPU() {
@@ -305,7 +408,7 @@
       return { supported: true };
     }
 
-    // Show error message (fatal - disables button)
+    // Show error message (fatal)
     function showError(title, message) {
       errorContainer.innerHTML = `
         <div class="error">
@@ -314,20 +417,7 @@
         </div>
       `;
       errorContainer.classList.remove("hidden");
-      button.disabled = true;
       infoBox.classList.add("hidden");
-    }
-
-    // Show retry error (non-fatal - shows retry button)
-    function showRetryError(title, message, canRetry = true) {
-      const retryBtn = canRetry
-        ? `<button id="retry-btn" style="padding: 10px 20px; background: #cc6600; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 12px;">Opnieuw proberen</button>`
-        : `<button onclick="location.reload()" style="padding: 10px 20px; background: #cc6600; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 12px;">Pagina verversen</button>`;
-      output.innerHTML = `<strong style="color: #900;">${title}</strong>\n${message}\n\n${retryBtn}`;
-
-      if (canRetry) {
-        document.getElementById("retry-btn").onclick = () => runChat();
-      }
     }
 
     // Update progress UI
@@ -338,155 +428,228 @@
       progressStatus.textContent = text || "Laden...";
     }
 
-    // Initialize on page load
+    // Update status indicator
+    function setStatus(status, text) {
+      statusDot.className = "status-dot " + status;
+      statusText.textContent = text;
+    }
+
+    // Add message to chat
+    function addMessage(role, content, isStreaming = false) {
+      if (emptyChat) {
+        emptyChat.remove();
+      }
+
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `message ${role}` + (isStreaming ? " typing" : "");
+
+      const labelDiv = document.createElement("div");
+      labelDiv.className = "message-label";
+      labelDiv.textContent = role === "user" ? "Jij" : "Assistent";
+
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "message-content";
+      contentDiv.textContent = content;
+
+      messageDiv.appendChild(labelDiv);
+      messageDiv.appendChild(contentDiv);
+      chatMessages.appendChild(messageDiv);
+
+      // Scroll to bottom
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      return contentDiv;
+    }
+
+    // Update last message content (for streaming)
+    function updateLastMessage(content, isComplete = false) {
+      const lastMessage = chatMessages.querySelector(".message:last-child");
+      if (lastMessage) {
+        const contentDiv = lastMessage.querySelector(".message-content");
+        if (contentDiv) {
+          contentDiv.textContent = content;
+        }
+        if (isComplete) {
+          lastMessage.classList.remove("typing");
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    }
+
+    // Load model
+    async function loadModel() {
+      const selectedModel = modelSelect.value;
+
+      if (cachedEngine && cachedModelId === selectedModel) {
+        return cachedEngine;
+      }
+
+      setStatus("loading", "Model laden...");
+      progressSection.classList.add("visible");
+      updateProgress(0, "Model initialiseren...");
+      modelSelect.disabled = true;
+
+      try {
+        const engine = await webllm.CreateMLCEngine(selectedModel, {
+          initProgressCallback: (report) => {
+            updateProgress(report.progress, report.text);
+          }
+        });
+
+        cachedEngine = engine;
+        cachedModelId = selectedModel;
+        retryCount = 0;
+
+        progressSection.classList.remove("visible");
+        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} geladen`);
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        userInput.focus();
+
+        return engine;
+
+      } catch (error) {
+        console.error("Load error:", error);
+        const errorMsg = error.message || String(error);
+
+        if ((errorMsg.includes("Load failed") || errorMsg.includes("fetch")) && retryCount < MAX_RETRIES) {
+          retryCount++;
+          const delay = retryCount * 2000;
+          updateProgress(0, `Download mislukt. Opnieuw proberen (${retryCount}/${MAX_RETRIES})...`);
+          await new Promise(r => setTimeout(r, delay));
+          return loadModel();
+        }
+
+        progressSection.classList.remove("visible");
+        setStatus("", "Laden mislukt");
+        modelSelect.disabled = false;
+        throw error;
+      }
+    }
+
+    // Send message
+    async function sendMessage() {
+      const userText = userInput.value.trim();
+      if (!userText || isGenerating) return;
+
+      isGenerating = true;
+      userInput.value = "";
+      userInput.disabled = true;
+      sendBtn.disabled = true;
+      modelSelect.disabled = true;
+
+      // Add user message to UI and history
+      addMessage("user", userText);
+      conversationHistory.push({ role: "user", content: userText });
+
+      try {
+        // Load model if needed
+        const engine = await loadModel();
+
+        // Add assistant message placeholder
+        addMessage("assistant", "", true);
+        setStatus("loading", "Antwoord genereren...");
+
+        // Create chat completion with streaming
+        const stream = await engine.chat.completions.create({
+          messages: conversationHistory,
+          stream: true,
+          max_tokens: 500
+        });
+
+        // Stream tokens
+        let fullResponse = "";
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content || "";
+          fullResponse += delta;
+          updateLastMessage(fullResponse);
+        }
+
+        // Finalize
+        updateLastMessage(fullResponse, true);
+        conversationHistory.push({ role: "assistant", content: fullResponse });
+        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} geladen`);
+
+      } catch (error) {
+        console.error("Error:", error);
+        updateLastMessage(`Fout: ${error.message}`, true);
+        setStatus("", "Fout opgetreden");
+      } finally {
+        isGenerating = false;
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        modelSelect.disabled = cachedEngine !== null;
+        userInput.focus();
+      }
+    }
+
+    // Clear chat
+    function clearChat() {
+      chatMessages.innerHTML = `
+        <div class="empty-chat" id="empty-chat">
+          Start een gesprek door een bericht te typen...
+        </div>
+      `;
+      conversationHistory = [conversationHistory[0]]; // Keep system prompt
+    }
+
+    // Auto-resize textarea
+    function autoResize() {
+      userInput.style.height = "auto";
+      userInput.style.height = Math.min(userInput.scrollHeight, 120) + "px";
+    }
+
+    // Initialize
     async function init() {
-      // Check WebGPU
       const webgpuCheck = checkWebGPU();
       if (!webgpuCheck.supported) {
         showError(webgpuCheck.reason, webgpuCheck.details);
         return;
       }
 
-      // Try to get adapter to verify WebGPU actually works
       try {
         const adapter = await navigator.gpu.requestAdapter();
         if (!adapter) {
           showError(
             "WebGPU niet beschikbaar",
-            "Je browser ondersteunt WebGPU, maar er is geen geschikte GPU gevonden. Controleer of je GPU-drivers up-to-date zijn."
+            "Je browser ondersteunt WebGPU, maar er is geen geschikte GPU gevonden."
           );
           return;
         }
       } catch (e) {
-        showError(
-          "WebGPU fout",
-          `Kon WebGPU niet initialiseren: ${e.message}`
-        );
+        showError("WebGPU fout", `Kon WebGPU niet initialiseren: ${e.message}`);
         return;
       }
 
-      console.log("WebGPU is beschikbaar en werkt.");
-    }
-
-    // Main chat function
-    async function runChat() {
-      const selectedModel = modelSelect.value;
-
-      button.disabled = true;
-      modelSelect.disabled = true;
-      output.textContent = "";
-      output.classList.remove("typing");
-      progressSection.classList.add("visible");
-      updateProgress(0, "Model initialiseren...");
-
-      let engine = cachedEngine;
-
-      try {
-        // Only reload if model changed or no engine cached
-        if (!engine || cachedModelId !== selectedModel) {
-          console.log(`Loading model: ${selectedModel}`);
-
-          // Create engine with progress callback
-          engine = await webllm.CreateMLCEngine(selectedModel, {
-            initProgressCallback: (report) => {
-              console.log("Init progress:", report);
-              updateProgress(report.progress, report.text);
-            }
-          });
-
-          // Cache for reuse
-          cachedEngine = engine;
-          cachedModelId = selectedModel;
-        } else {
-          console.log("Using cached engine");
-          updateProgress(1, "Model al geladen!");
-        }
-
-        // Update UI for generation phase
-        progressSection.classList.remove("visible");
-        output.classList.add("typing");
-
-        // Create chat completion with streaming
-        const stream = await engine.chat.completions.create({
-          messages: [
-            { role: "system", content: "Je bent een vriendelijk lokaal model dat in de browser draait. Houd je antwoorden kort en bondig." },
-            { role: "user", content: "Zeg hallo vanuit de browser en vertel kort wat je bent." }
-          ],
-          stream: true,
-          max_tokens: 150
-        });
-
-        // Stream tokens to output
-        let fullResponse = "";
-        for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta?.content || "";
-          fullResponse += delta;
-          output.textContent = fullResponse;
-        }
-
-        output.classList.remove("typing");
-
-        // Reset retry count on success
-        retryCount = 0;
-
-      } catch (error) {
-        console.error("Error:", error);
-        progressSection.classList.remove("visible");
-        output.classList.remove("typing");
-
-        // Clear cached engine on error
-        cachedEngine = null;
-        cachedModelId = null;
-
-        const errorMsg = error.message || String(error);
-
-        // Detect specific error types
-        if (errorMsg.includes("Load failed") || errorMsg.includes("fetch") || errorMsg.includes("network") || errorMsg.includes("Failed to fetch")) {
-          // Auto-retry for network errors
-          if (retryCount < MAX_RETRIES) {
-            retryCount++;
-            const delay = retryCount * 2000; // 2s, 4s
-            updateProgress(0, `Download mislukt. Automatisch opnieuw proberen (${retryCount}/${MAX_RETRIES}) over ${delay/1000}s...`);
-            output.textContent = `Download onderbroken. Automatisch opnieuw proberen (${retryCount}/${MAX_RETRIES})...`;
-
-            setTimeout(() => {
-              runChat();
-            }, delay);
-            return; // Don't re-enable button yet
-          }
-
-          showRetryError(
-            "Download mislukt",
-            `Het model kon niet worden gedownload na ${MAX_RETRIES} pogingen.\n\nMogelijke oorzaken:\n• Trage of onstabiele internetverbinding\n• Hugging Face servers tijdelijk onbereikbaar\n• Browser/netwerk timeout\n\nTip: Wacht even en probeer opnieuw.`
-          );
-          retryCount = 0;
-        } else if (errorMsg.includes("memory") || errorMsg.includes("OOM") || errorMsg.includes("allocation")) {
-          showRetryError(
-            "Onvoldoende geheugen",
-            `Je apparaat heeft niet genoeg geheugen voor dit model.\n\nOplossingen:\n• Sluit andere tabbladen en apps\n• Kies een kleiner model\n• Probeer op een desktop/laptop`,
-            false
-          );
-        } else if (errorMsg.includes("WebGPU") || errorMsg.includes("GPU")) {
-          showRetryError(
-            "WebGPU fout",
-            `Er is een probleem met de GPU.\n\n${errorMsg}\n\nProbeer de pagina te verversen.`
-          );
-        } else {
-          showRetryError(
-            "Fout opgetreden",
-            `${errorMsg}\n\nProbeer de pagina te verversen of kies een ander model.`
-          );
-        }
-      } finally {
-        button.disabled = false;
-        modelSelect.disabled = false;
-      }
+      // Enable input and auto-load model
+      setStatus("", "Klik om model te laden");
+      userInput.disabled = false;
+      sendBtn.disabled = false;
     }
 
     // Event listeners
-    button.onclick = runChat;
+    sendBtn.onclick = sendMessage;
+    clearBtn.onclick = clearChat;
 
-    // Run init check
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    userInput.addEventListener("input", autoResize);
+
+    modelSelect.addEventListener("change", () => {
+      // Reset engine when model changes
+      if (cachedModelId !== modelSelect.value) {
+        cachedEngine = null;
+        cachedModelId = null;
+        setStatus("", "Nieuw model geselecteerd");
+      }
+    });
+
+    // Start
     init();
   </script>
 </body>
