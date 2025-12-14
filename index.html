@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Edge NLP Hello World</title>
+</head>
+<body>
+  <h1>Edge NLP – Hello World</h1>
+  <button id="run">Zeg hallo</button>
+  <pre id="output"></pre>
+
+  <script type="module">
+    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+    const output = document.getElementById("output");
+    const button = document.getElementById("run");
+
+    button.onclick = async () => {
+      output.textContent = "Model laden… (eerste keer duurt even)";
+
+      const engine = new webllm.MLCEngine();
+
+      // Klein, snel model – perfect voor demo
+      await engine.reload("phi-2-q4f16_1");
+
+      const reply = await engine.chat.completions.create({
+        messages: [
+          { role: "system", content: "Je bent een vriendelijk lokaal model." },
+          { role: "user", content: "Zeg hallo vanuit de browser." }
+        ],
+      });
+
+      output.textContent = reply.choices[0].message.content;
+    };
+  </script>
+</body>
+</html>
