@@ -320,9 +320,9 @@
     <div class="model-selector">
       <label for="model-select">Kies een model:</label>
       <select id="model-select">
-        <option value="SmolLM2-360M-Instruct-q4f16_1-MLC" selected>SmolLM2 360M (~380MB, snel)</option>
-        <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B (~700MB, beter)</option>
-        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B (~1.6GB, best)</option>
+        <option value="phi-2-q4f16_1-MLC">Phi-2 (~1.6GB, snel)</option>
+        <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">Phi-3 Mini 4K (~2.2GB, goed)</option>
+        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC" selected>Phi-3.5 Mini (~2.2GB, beste NL)</option>
       </select>
     </div>
 
@@ -393,7 +393,7 @@
     const MAX_RETRIES = 2;
     let isGenerating = false;
     let conversationHistory = [
-      { role: "system", content: "Je bent een vriendelijke en behulpzame AI-assistent die lokaal in de browser draait. Houd je antwoorden bondig maar informatief. Antwoord in het Nederlands tenzij de gebruiker een andere taal gebruikt." }
+      { role: "system", content: "Je antwoordt altijd in correct, natuurlijk Nederlands. Gebruik korte, duidelijke zinnen. Vermijd Engels. Je bent een behulpzame assistent die lokaal in de browser draait." }
     ];
 
     // Check WebGPU support
