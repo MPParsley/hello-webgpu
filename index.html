@@ -208,6 +208,32 @@
       white-space: pre-wrap;
     }
 
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.1);
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .message:hover .copy-btn {
+      opacity: 1;
+    }
+
+    .copy-btn:hover {
+      background: rgba(0,0,0,0.2);
+    }
+
+    .message {
+      position: relative;
+    }
+
     .empty-chat {
       color: #999;
       text-align: center;
@@ -479,6 +505,18 @@ START: Player is in the village square. A villager mentions a dragon.`;
       statusText.textContent = text;
     }
 
+    // Copy text to clipboard
+    async function copyToClipboard(text, button) {
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copied!";
+        setTimeout(() => button.textContent = "Copy", 1500);
+      } catch (e) {
+        button.textContent = "Failed";
+        setTimeout(() => button.textContent = "Copy", 1500);
+      }
+    }
+
     // Add message to chat
     function addMessage(role, content, isStreaming = false) {
       if (emptyChat) {
@@ -496,8 +534,15 @@ START: Player is in the village square. A villager mentions a dragon.`;
       contentDiv.className = "message-content";
       contentDiv.textContent = content;
 
+      // Add copy button
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "copy-btn";
+      copyBtn.textContent = "Copy";
+      copyBtn.onclick = () => copyToClipboard(contentDiv.textContent, copyBtn);
+
       messageDiv.appendChild(labelDiv);
       messageDiv.appendChild(contentDiv);
+      messageDiv.appendChild(copyBtn);
       chatMessages.appendChild(messageDiv);
 
       // Scroll to bottom
