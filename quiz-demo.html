@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Overlay Demo - For Falling Blocks Game</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: white;
+      min-height: 100vh;
+    }
+
+    h1 { color: #eee; }
+    h2 { color: #aaa; margin-top: 30px; }
+
+    .game-placeholder {
+      background: #16213e;
+      border: 2px dashed #0f3460;
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .game-placeholder p {
+      color: #888;
+      margin: 0;
+    }
+
+    .stats {
+      background: #16213e;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .stats p {
+      margin: 8px 0;
+      font-size: 0.95rem;
+    }
+
+    .stats strong {
+      color: #4cc9f0;
+    }
+
+    button {
+      background: #e94560;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #ff6b6b;
+    }
+
+    code {
+      background: #0f3460;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    pre {
+      background: #0f3460;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <h1>Quiz Overlay Demo</h1>
+  <p>This demonstrates the reusable quiz system for your falling blocks game.</p>
+
+  <div class="game-placeholder">
+    <p>🎮 Your Falling Blocks Game Goes Here 🎮</p>
+    <p style="margin-top: 10px; font-size: 0.9rem;">The quiz overlay will appear on top of this</p>
+  </div>
+
+  <div class="stats">
+    <p><strong>Player:</strong> <span id="player-name">Not set</span></p>
+    <p><strong>Lines Cleared:</strong> <span id="lines-cleared">0</span></p>
+    <p><strong>Questions Answered:</strong> <span id="questions-answered">0</span></p>
+    <p><strong>Score:</strong> <span id="quiz-score">0</span></p>
+  </div>
+
+  <h2>Test the Quiz</h2>
+  <button id="btn-name">1. Enter Name (Game Start)</button>
+  <button id="btn-lines">2. Simulate 4 Lines</button>
+  <button id="btn-reset">Reset Demo</button>
+
+  <h2>Integration Code</h2>
+  <pre>
+// 1. Include the script
+&lt;script src="quiz-overlay.js">&lt;/script>
+
+// 2. Create quiz instance
+const quiz = new QuizOverlay({
+  questions: YOUR_QUESTIONS,  // Optional custom questions
+  onCorrect: () => addBonusPoints(100),
+  onWrong: () => speedUpGame(),
+  onComplete: (score, total, passed) => {
+    if (passed) showVictoryScreen();
+    else showGameOver();
+  }
+});
+
+// 3. Show name input at game start
+quiz.showNameInput((name) => {
+  startGame();
+});
+
+// 4. In your game loop, when 4 lines are cleared:
+if (linesCleared >= 4) {
+  pauseGame();
+  quiz.showQuestion((wasCorrect) => {
+    resumeGame();
+  });
+  linesCleared = 0;
+}
+
+// 5. Check for mission complete
+if (quiz.isComplete()) {
+  if (quiz.isPassed()) {
+    // Player won!
+  }
+}</pre>
+
+  <script src="quiz-overlay.js"></script>
+  <script>
+    // Demo state
+    let linesCleared = 0;
+
+    // Custom questions for demo
+    const DEMO_QUESTIONS = [
+      {
+        question: "In Tetris, what shape is the I-piece?",
+        choices: ["Square", "L-shape", "Long bar", "T-shape"],
+        correct: 2
+      },
+      {
+        question: "How many squares make up each Tetris piece?",
+        choices: ["3", "4", "5", "6"],
+        correct: 1
+      },
+      {
+        question: "What happens when you complete a line?",
+        choices: ["Nothing", "It disappears", "It turns gold", "Game over"],
+        correct: 1
+      },
+      {
+        question: "What's the highest score called in Tetris?",
+        choices: ["Single", "Double", "Triple", "Tetris"],
+        correct: 3
+      },
+      {
+        question: "What color is the T-piece usually?",
+        choices: ["Red", "Blue", "Purple", "Green"],
+        correct: 2
+      }
+    ];
+
+    // Create quiz
+    const quiz = new QuizOverlay({
+      questions: DEMO_QUESTIONS,
+      onNameSet: (name) => {
+        document.getElementById('player-name').textContent = name;
+      },
+      onCorrect: () => {
+        console.log('Correct! +100 bonus points');
+      },
+      onWrong: () => {
+        console.log('Wrong! Game speeds up');
+      },
+      onComplete: (score, total, passed) => {
+        if (passed) {
+          alert(`🎉 ${quiz.playerName} completed the mission! Score: ${score}/${total}`);
+        } else {
+          alert(`😢 Mission failed. Score: ${score}/${total}. Try again!`);
+        }
+      }
+    });
+
+    // Update stats display
+    function updateStats() {
+      document.getElementById('lines-cleared').textContent = linesCleared;
+      document.getElementById('questions-answered').textContent = quiz.currentQuestion;
+      document.getElementById('quiz-score').textContent = quiz.score;
+    }
+
+    // Button handlers
+    document.getElementById('btn-name').onclick = () => {
+      quiz.showNameInput(() => {
+        updateStats();
+      });
+    };
+
+    document.getElementById('btn-lines').onclick = () => {
+      if (!quiz.playerName) {
+        alert('Enter your name first!');
+        return;
+      }
+
+      linesCleared += 4;
+      updateStats();
+
+      // Show question when 4 lines cleared
+      quiz.showQuestion((wasCorrect) => {
+        updateStats();
+        console.log(wasCorrect ? 'Answer was correct!' : 'Answer was wrong!');
+      });
+    };
+
+    document.getElementById('btn-reset').onclick = () => {
+      quiz.reset();
+      quiz.playerName = '';
+      linesCleared = 0;
+      document.getElementById('player-name').textContent = 'Not set';
+      updateStats();
+    };
+  </script>
+</body>
+</html>
