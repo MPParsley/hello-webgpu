@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edge NLP Chat</title>
+  <title>Dragon Quest - Text Adventure</title>
   <style>
     * {
       box-sizing: border-box;
@@ -305,42 +305,44 @@
 </head>
 <body>
   <div class="container">
-    <h1>Edge NLP Chat</h1>
+    <h1>Dragon Quest - Text Adventure</h1>
 
     <!-- Error container (hidden by default) -->
     <div id="error-container" class="hidden"></div>
 
     <!-- Info box -->
     <div class="info" id="info-box">
-      Dit model draait volledig lokaal in je browser via WebGPU.
-      Geen data wordt naar een server gestuurd.
+      A text adventure game running locally in your browser!
+      Type what you want to do and press Send.
     </div>
 
     <!-- Model selector -->
     <div class="model-selector">
-      <label for="model-select">Kies een model:</label>
+      <label for="model-select">Choose a model:</label>
       <select id="model-select">
-        <option value="phi-2-q4f16_1-MLC">Phi-2 (~1.6GB, snel)</option>
-        <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">Phi-3 Mini 4K (~2.2GB, goed)</option>
-        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC" selected>Phi-3.5 Mini (~2.2GB, beste NL)</option>
-        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (~2.5GB, krachtig)</option>
+        <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (~360MB, fastest)</option>
+        <option value="SmolLM2-360M-Instruct-q0f16-MLC">SmolLM2-360M (~720MB, light)</option>
+        <option value="phi-2-q4f16_1-MLC">Phi-2 (~1.6GB, fast)</option>
+        <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">Phi-3 Mini 4K (~2.2GB, good)</option>
+        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC" selected>Phi-3.5 Mini (~2.2GB, best)</option>
+        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (~2.5GB, powerful)</option>
       </select>
     </div>
 
     <!-- Progress section -->
     <div class="progress-section" id="progress-section">
-      <div class="progress-label">Model laden...</div>
+      <div class="progress-label">Loading model...</div>
       <div class="progress-bar-container">
         <div class="progress-bar" id="progress-bar"></div>
         <span class="progress-percentage" id="progress-percentage">0%</span>
       </div>
-      <div class="progress-status" id="progress-status">Initialiseren...</div>
+      <div class="progress-status" id="progress-status">Initializing...</div>
     </div>
 
     <!-- Status indicator -->
     <div class="status-indicator" id="status-indicator">
       <div class="status-dot" id="status-dot"></div>
-      <span id="status-text">Model niet geladen</span>
+      <span id="status-text">Model not loaded</span>
     </div>
 
     <!-- Chat container -->
@@ -348,7 +350,7 @@
       <!-- Chat messages -->
       <div class="chat-messages" id="chat-messages">
         <div class="empty-chat" id="empty-chat">
-          Start een gesprek door een bericht te typen...
+          Type "start" to begin your adventure!
         </div>
       </div>
 
@@ -356,15 +358,15 @@
       <div class="input-section">
         <textarea
           id="user-input"
-          placeholder="Typ je bericht..."
+          placeholder="What do you want to do?"
           rows="1"
           disabled
         ></textarea>
-        <button id="send-btn" disabled>Verstuur</button>
+        <button id="send-btn" disabled>Send</button>
       </div>
 
       <!-- Clear button -->
-      <button id="clear-btn" class="clear-btn">Gesprek wissen</button>
+      <button id="clear-btn" class="clear-btn">Restart Adventure</button>
     </div>
   </div>
 
@@ -393,8 +395,39 @@
     let retryCount = 0;
     const MAX_RETRIES = 2;
     let isGenerating = false;
+    // ============================================================
+    // GAME SCENARIO - EASY TO EDIT!
+    // Change the story below to create your own adventure!
+    // ============================================================
+    const GAME_SCENARIO = `You are the Game Master of a text adventure game called "Dragon Quest".
+
+SETTING:
+- A magical forest with a hidden dragon cave
+- A friendly village nearby
+- A mysterious tower in the distance
+
+THE PLAYER:
+- Is a brave young hero
+- Has a wooden sword and a backpack
+- Knows basic magic (can create light)
+
+LOCATIONS:
+1. VILLAGE - Safe starting point with helpful villagers
+2. FOREST - Trees, mushrooms, maybe some animals
+3. CAVE - Where the dragon lives (not evil, just lonely!)
+4. TOWER - Optional: has a wizard who gives hints
+
+HOW TO PLAY:
+- Describe what the player sees in 2-3 sentences
+- Always give 2-3 choices like: "You can: 1) Go north 2) Talk to the villager 3) Look around"
+- Be friendly and encouraging
+- If the player finds the dragon, they can become friends!
+- Keep responses short and exciting
+
+START: The player wakes up in the village square. A villager says there's a dragon in the forest. Begin the adventure!`;
+
     let conversationHistory = [
-      { role: "system", content: "Je antwoordt altijd in correct, natuurlijk Nederlands. Gebruik korte, duidelijke zinnen. Vermijd Engels. Je bent een behulpzame assistent die lokaal in de browser draait." }
+      { role: "system", content: GAME_SCENARIO }
     ];
 
     // Check WebGPU support
@@ -402,8 +435,8 @@
       if (!("gpu" in navigator)) {
         return {
           supported: false,
-          reason: "WebGPU niet beschikbaar",
-          details: "Je browser ondersteunt geen WebGPU. Probeer Chrome 113+, Edge 113+, of Safari 18+ (macOS Sonoma / iOS 18)."
+          reason: "WebGPU not available",
+          details: "Your browser does not support WebGPU. Try Chrome 113+, Edge 113+, or Safari 18+ (macOS Sonoma / iOS 18)."
         };
       }
       return { supported: true };
@@ -426,7 +459,7 @@
       const percent = Math.round(progress * 100);
       progressBar.style.width = `${percent}%`;
       progressPercentage.textContent = `${percent}%`;
-      progressStatus.textContent = text || "Laden...";
+      progressStatus.textContent = text || "Loading...";
     }
 
     // Update status indicator
@@ -446,7 +479,7 @@
 
       const labelDiv = document.createElement("div");
       labelDiv.className = "message-label";
-      labelDiv.textContent = role === "user" ? "Jij" : "Assistent";
+      labelDiv.textContent = role === "user" ? "You" : "Assistant";
 
       const contentDiv = document.createElement("div");
       contentDiv.className = "message-content";
@@ -485,9 +518,9 @@
         return cachedEngine;
       }
 
-      setStatus("loading", "Model laden...");
+      setStatus("loading", "Loading model...");
       progressSection.classList.add("visible");
-      updateProgress(0, "Model initialiseren...");
+      updateProgress(0, "Initializing model...");
       modelSelect.disabled = true;
 
       try {
@@ -502,7 +535,7 @@
         retryCount = 0;
 
         progressSection.classList.remove("visible");
-        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} geladen`);
+        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} loaded`);
         userInput.disabled = false;
         sendBtn.disabled = false;
         userInput.focus();
@@ -516,13 +549,13 @@
         if ((errorMsg.includes("Load failed") || errorMsg.includes("fetch")) && retryCount < MAX_RETRIES) {
           retryCount++;
           const delay = retryCount * 2000;
-          updateProgress(0, `Download mislukt. Opnieuw proberen (${retryCount}/${MAX_RETRIES})...`);
+          updateProgress(0, `Download failed. Retrying (${retryCount}/${MAX_RETRIES})...`);
           await new Promise(r => setTimeout(r, delay));
           return loadModel();
         }
 
         progressSection.classList.remove("visible");
-        setStatus("", "Laden mislukt");
+        setStatus("", "Loading failed");
         modelSelect.disabled = false;
         throw error;
       }
@@ -549,7 +582,7 @@
 
         // Add assistant message placeholder
         addMessage("assistant", "", true);
-        setStatus("loading", "Antwoord genereren...");
+        setStatus("loading", "Generating response...");
 
         // Create chat completion with streaming
         const stream = await engine.chat.completions.create({
@@ -569,12 +602,12 @@
         // Finalize
         updateLastMessage(fullResponse, true);
         conversationHistory.push({ role: "assistant", content: fullResponse });
-        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} geladen`);
+        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} loaded`);
 
       } catch (error) {
         console.error("Error:", error);
-        updateLastMessage(`Fout: ${error.message}`, true);
-        setStatus("", "Fout opgetreden");
+        updateLastMessage(`Error: ${error.message}`, true);
+        setStatus("", "Error occurred");
       } finally {
         isGenerating = false;
         userInput.disabled = false;
@@ -588,7 +621,7 @@
     function clearChat() {
       chatMessages.innerHTML = `
         <div class="empty-chat" id="empty-chat">
-          Start een gesprek door een bericht te typen...
+          Type "start" to begin your adventure!
         </div>
       `;
       conversationHistory = [conversationHistory[0]]; // Keep system prompt
@@ -612,18 +645,18 @@
         const adapter = await navigator.gpu.requestAdapter();
         if (!adapter) {
           showError(
-            "WebGPU niet beschikbaar",
-            "Je browser ondersteunt WebGPU, maar er is geen geschikte GPU gevonden."
+            "WebGPU not available",
+            "Your browser supports WebGPU, but no suitable GPU was found."
           );
           return;
         }
       } catch (e) {
-        showError("WebGPU fout", `Kon WebGPU niet initialiseren: ${e.message}`);
+        showError("WebGPU error", `Could not initialize WebGPU: ${e.message}`);
         return;
       }
 
       // Enable input and auto-load model
-      setStatus("", "Klik om model te laden");
+      setStatus("", "Click to load model");
       userInput.disabled = false;
       sendBtn.disabled = false;
     }
@@ -646,7 +679,7 @@
       if (cachedModelId !== modelSelect.value) {
         cachedEngine = null;
         cachedModelId = null;
-        setStatus("", "Nieuw model geselecteerd");
+        setStatus("", "New model selected");
       }
     });
 
