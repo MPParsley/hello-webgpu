@@ -3,9 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <title>Edge NLP Hello World</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 1rem; }
+    select, button { padding: 0.5rem 1rem; margin: 0.5rem 0.5rem 0.5rem 0; }
+    .model-info { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
   <h1>Edge NLP – Hello World</h1>
+
+  <label for="model">Kies model:</label>
+  <select id="model">
+    <option value="SmolLM2-135M-Instruct-q0f16-MLC" data-size="360MB" data-params="135M">
+      SmolLM2-135M-Instruct (135M params, ~360MB) ⭐ Lightest
+    </option>
+    <option value="SmolLM2-360M-Instruct-q0f16-MLC" data-size="720MB" data-params="360M">
+      SmolLM2-360M-Instruct (360M params, ~720MB)
+    </option>
+    <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC" data-size="670MB" data-params="1.1B">
+      TinyLlama-1.1B-Chat (1.1B params, ~670MB)
+    </option>
+    <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" data-size="400MB" data-params="0.5B">
+      Qwen2.5-0.5B-Instruct (0.5B params, ~400MB)
+    </option>
+    <option value="phi-2-q4f16_1-MLC" data-size="1.5GB" data-params="2.7B">
+      Phi-2 (2.7B params, ~1.5GB)
+    </option>
+  </select>
+  <div class="model-info" id="model-info">SmolLM2-135M: Ultra-compact SOTA model, ideal for NPC/Zork-style dialogue</div>
+
+  <br>
   <button id="run">Zeg hallo</button>
   <pre id="output"></pre>
 
@@ -14,23 +42,48 @@
 
     const output = document.getElementById("output");
     const button = document.getElementById("run");
+    const modelSelect = document.getElementById("model");
+    const modelInfo = document.getElementById("model-info");
+
+    const modelDescriptions = {
+      "SmolLM2-135M-Instruct-q0f16-MLC": "SmolLM2-135M: Ultra-compact SOTA model, ideal for NPC/Zork-style dialogue",
+      "SmolLM2-360M-Instruct-q0f16-MLC": "SmolLM2-360M: Better quality than 135M, still very lightweight",
+      "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC": "TinyLlama: Well-balanced compact model with good reasoning",
+      "Qwen2.5-0.5B-Instruct-q4f16_1-MLC": "Qwen2.5-0.5B: Alibaba's smallest model, great multilingual support",
+      "phi-2-q4f16_1-MLC": "Phi-2: Microsoft's compact model with strong reasoning abilities"
+    };
+
+    modelSelect.onchange = () => {
+      modelInfo.textContent = modelDescriptions[modelSelect.value] || "";
+    };
+
+    let engine = null;
+    let currentModel = null;
 
     button.onclick = async () => {
-      output.textContent = "Model laden… (eerste keer duurt even)";
+      const selectedModel = modelSelect.value;
 
-      const engine = new webllm.MLCEngine();
+      try {
+        if (!engine || currentModel !== selectedModel) {
+          output.textContent = `Model laden: ${selectedModel}… (eerste keer duurt even)`;
+          engine = new webllm.MLCEngine();
+          await engine.reload(selectedModel);
+          currentModel = selectedModel;
+        }
 
-      // Klein, snel model – perfect voor demo
-      await engine.reload("phi-2-q4f16_1");
+        output.textContent = "Genereren…";
 
-      const reply = await engine.chat.completions.create({
-        messages: [
-          { role: "system", content: "Je bent een vriendelijk lokaal model." },
-          { role: "user", content: "Zeg hallo vanuit de browser." }
-        ],
-      });
+        const reply = await engine.chat.completions.create({
+          messages: [
+            { role: "system", content: "Je bent een vriendelijk NPC in een tekstavontuur zoals Zork. Geef korte, sfeervolle antwoorden." },
+            { role: "user", content: "Zeg hallo vanuit de browser." }
+          ],
+        });
 
-      output.textContent = reply.choices[0].message.content;
+        output.textContent = reply.choices[0].message.content;
+      } catch (err) {
+        output.textContent = `Fout: ${err.message}`;
+      }
     };
   </script>
 </body>
