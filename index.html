@@ -399,32 +399,26 @@
     // GAME SCENARIO - EASY TO EDIT!
     // Change the story below to create your own adventure!
     // ============================================================
-    const GAME_SCENARIO = `You are the Game Master of a text adventure game called "Dragon Quest".
+    const GAME_SCENARIO = `You run a simple text adventure game.
 
-SETTING:
-- A magical forest with a hidden dragon cave
-- A friendly village nearby
-- A mysterious tower in the distance
+RULES:
+1. Describe the scene in 1-2 sentences
+2. End EVERY response with exactly 3 choices numbered 1, 2, 3
+3. Wait for player to choose - never decide for them
+4. Keep responses under 50 words
 
-THE PLAYER:
-- Is a brave young hero
-- Has a wooden sword and a backpack
-- Knows basic magic (can create light)
+WORLD: Village, Forest, Cave (friendly dragon inside), Tower (wizard)
+PLAYER: Hero with sword and backpack
 
-LOCATIONS:
-1. VILLAGE - Safe starting point with helpful villagers
-2. FOREST - Trees, mushrooms, maybe some animals
-3. CAVE - Where the dragon lives (not evil, just lonely!)
-4. TOWER - Optional: has a wizard who gives hints
+FORMAT EXAMPLE:
+"You stand in the village. An old man points toward the dark forest.
 
-HOW TO PLAY:
-- Describe what the player sees in 2-3 sentences
-- Always give 2-3 choices like: "You can: 1) Go north 2) Talk to the villager 3) Look around"
-- Be friendly and encouraging
-- If the player finds the dragon, they can become friends!
-- Keep responses short and exciting
+What do you do?
+1. Enter the forest
+2. Talk to the old man
+3. Look around the village"
 
-START: The player wakes up in the village square. A villager says there's a dragon in the forest. Begin the adventure!`;
+START: Player is in the village square. A villager mentions a dragon.`;
 
     let conversationHistory = [
       { role: "system", content: GAME_SCENARIO }
