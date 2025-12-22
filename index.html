@@ -400,12 +400,7 @@
     // ============================================================
 
     // Simple game for small models (SmolLM) - just needs short responses
-    const GAME_SIMPLE = `You are a magic crystal ball.
-Give short mysterious answers (1 sentence max).
-Be fun and silly. Examples:
-- "The stars say... maybe!"
-- "I see cheese in your future."
-- "Ask again after lunch."`;
+    const GAME_SIMPLE = `Reply with only: Yes, No, or Maybe. Nothing else. One word only.`;
 
     // Advanced game for larger models (Phi, Qwen)
     const GAME_QUEST = `You run a text adventure game.
@@ -618,10 +613,11 @@ START: Player is in the village square. A villager mentions a dragon.`;
         setStatus("loading", "Generating response...");
 
         // Create chat completion with streaming
+        const isSmol = modelSelect.value.includes("SmolLM");
         const stream = await engine.chat.completions.create({
           messages: conversationHistory,
           stream: true,
-          max_tokens: 500
+          max_tokens: isSmol ? 10 : 500
         });
 
         // Stream tokens
