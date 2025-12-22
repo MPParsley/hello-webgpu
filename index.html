@@ -322,9 +322,9 @@
       <select id="model-select">
         <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (~360MB, tiny)</option>
         <option value="SmolLM2-360M-Instruct-q0f16-MLC">SmolLM2-360M (~720MB, small)</option>
+        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC" selected>SmolLM2-1.7B (~1GB, good)</option>
         <option value="phi-2-q4f16_1-MLC">Phi-2 (~1.6GB, fast)</option>
-        <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">Phi-3 Mini 4K (~2.2GB, good)</option>
-        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC" selected>Phi-3.5 Mini (~2.2GB, best)</option>
+        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5 Mini (~2.2GB, best)</option>
         <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (~2.5GB, powerful)</option>
       </select>
     </div>
@@ -424,9 +424,14 @@ What do you do?
 
 START: Player is in the village square. A villager mentions a dragon.`;
 
+    // Check if model is too small for quest game
+    function isTinyModel(modelId) {
+      return modelId.includes("SmolLM2-135M") || modelId.includes("SmolLM2-360M");
+    }
+
     // Choose scenario based on model
     function getScenarioForModel(modelId) {
-      if (modelId.includes("SmolLM")) {
+      if (isTinyModel(modelId)) {
         return GAME_SIMPLE;
       }
       return GAME_QUEST;
@@ -613,11 +618,11 @@ START: Player is in the village square. A villager mentions a dragon.`;
         setStatus("loading", "Generating response...");
 
         // Create chat completion with streaming
-        const isSmol = modelSelect.value.includes("SmolLM");
+        const isTiny = isTinyModel(modelSelect.value);
         const stream = await engine.chat.completions.create({
           messages: conversationHistory,
           stream: true,
-          max_tokens: isSmol ? 10 : 500
+          max_tokens: isTiny ? 10 : 500
         });
 
         // Stream tokens
@@ -671,7 +676,7 @@ START: Player is in the village square. A villager mentions a dragon.`;
 
     // Clear chat
     function clearChat() {
-      const isSimple = modelSelect.value.includes("SmolLM");
+      const isSimple = isTinyModel(modelSelect.value);
       chatMessages.innerHTML = `
         <div class="empty-chat" id="empty-chat">
           ${isSimple ? 'Ask the crystal ball a question!' : 'Type "start" to begin your adventure!'}
@@ -745,7 +750,7 @@ START: Player is in the village square. A villager mentions a dragon.`;
 
     // Update UI based on selected model/game type
     function updateGameUI() {
-      const isSimple = modelSelect.value.includes("SmolLM");
+      const isSimple = isTinyModel(modelSelect.value);
       document.querySelector("h1").textContent = isSimple ? "Magic Crystal Ball" : "Dragon Quest - Text Adventure";
       document.title = isSimple ? "Magic Crystal Ball" : "Dragon Quest - Text Adventure";
       infoBox.textContent = isSimple
