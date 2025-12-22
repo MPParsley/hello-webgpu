@@ -515,7 +515,29 @@ START: The player wakes up in the village square. A villager says there's a drag
       const selectedModel = modelSelect.value;
 
       if (cachedEngine && cachedModelId === selectedModel) {
-        return cachedEngine;
+        // Verify engine is still valid
+        try {
+          // Quick check if engine is disposed
+          if (cachedEngine.chat) {
+            return cachedEngine;
+          }
+        } catch (e) {
+          // Engine is disposed, clear cache
+          console.log("Cached engine disposed, reloading...");
+          cachedEngine = null;
+          cachedModelId = null;
+        }
+      }
+
+      // Dispose old engine if switching models
+      if (cachedEngine && cachedModelId !== selectedModel) {
+        try {
+          await cachedEngine.unload();
+        } catch (e) {
+          // Ignore disposal errors
+        }
+        cachedEngine = null;
+        cachedModelId = null;
       }
 
       setStatus("loading", "Loading model...");
@@ -606,6 +628,29 @@ START: The player wakes up in the village square. A villager says there's a drag
 
       } catch (error) {
         console.error("Error:", error);
+        const errorMsg = error.message || String(error);
+
+        // Check if engine was disposed - clear cache and retry once
+        if (errorMsg.includes("disposed") || errorMsg.includes("deleted object")) {
+          console.log("Engine disposed, clearing cache and retrying...");
+          cachedEngine = null;
+          cachedModelId = null;
+
+          // Remove the failed assistant message
+          const lastMsg = chatMessages.querySelector(".message:last-child");
+          if (lastMsg && lastMsg.classList.contains("assistant")) {
+            lastMsg.remove();
+          }
+          // Remove user message from history (will be re-added on retry)
+          conversationHistory.pop();
+
+          // Retry the message
+          isGenerating = false;
+          userInput.value = userText;
+          setTimeout(() => sendMessage(), 100);
+          return;
+        }
+
         updateLastMessage(`Error: ${error.message}`, true);
         setStatus("", "Error occurred");
       } finally {
