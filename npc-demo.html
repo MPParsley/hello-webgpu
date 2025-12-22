@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NPC Dialog Demo - For Falling Blocks Game</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #0f0f1a;
+      color: #eee;
+      min-height: 100vh;
+    }
+
+    h1 { color: #4a9eff; }
+    h2 { color: #888; margin-top: 30px; font-size: 1.1rem; }
+
+    .game-area {
+      background: #1a1a2e;
+      border: 2px solid #4a9eff;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .game-area p {
+      color: #888;
+      margin: 10px 0;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .stat-box {
+      background: #1a1a2e;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-box .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4a9eff;
+    }
+
+    .stat-box .label {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+
+    button {
+      background: linear-gradient(135deg, #4a9eff, #a855f7);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    button.secondary {
+      background: #333;
+    }
+
+    .model-select {
+      background: #1a1a2e;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .model-select label {
+      display: block;
+      margin-bottom: 8px;
+      color: #888;
+    }
+
+    .model-select select {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      background: #0f0f1a;
+      color: #eee;
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+
+    .progress-bar {
+      background: #333;
+      border-radius: 8px;
+      height: 8px;
+      margin: 20px 0;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar.visible {
+      display: block;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, #4a9eff, #a855f7);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .status {
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+      margin: 10px 0;
+    }
+
+    pre {
+      background: #1a1a2e;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #aaa;
+    }
+
+    code {
+      color: #4a9eff;
+    }
+
+    .quest-config {
+      background: #1a1a2e;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .quest-config label {
+      display: block;
+      color: #888;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+    }
+
+    .quest-config input, .quest-config textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 0.95rem;
+      background: #0f0f1a;
+      color: #eee;
+      border: 1px solid #333;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .quest-config textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧙 NPC Dialog System</h1>
+  <p>Interactive NPC dialogs with AI-generated multiple choice options.</p>
+
+  <!-- Model Selection -->
+  <div class="model-select">
+    <label>Select AI Model:</label>
+    <select id="model-select">
+      <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2-1.7B (~1GB, good)</option>
+      <option value="phi-2-q4f16_1-MLC">Phi-2 (~1.6GB, fast)</option>
+      <option value="Phi-3.5-mini-instruct-q4f16_1-MLC" selected>Phi-3.5 Mini (~2.2GB, best)</option>
+      <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (~2.5GB, powerful)</option>
+    </select>
+  </div>
+
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+  <div class="status" id="status">Click "Load Model" to start</div>
+
+  <!-- Game Stats -->
+  <div class="stats">
+    <div class="stat-box">
+      <div class="value" id="lines-count">0</div>
+      <div class="label">Lines Cleared</div>
+    </div>
+    <div class="stat-box">
+      <div class="value" id="quests-count">0</div>
+      <div class="label">Quests Completed</div>
+    </div>
+    <div class="stat-box">
+      <div class="value" id="player-name">-</div>
+      <div class="label">Player</div>
+    </div>
+  </div>
+
+  <!-- Simulated Game Area -->
+  <div class="game-area">
+    <p>🎮 Your Falling Blocks Game Here 🎮</p>
+    <p>The NPC dialog appears as an overlay when triggered</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="btn-load">Load Model</button>
+    <button id="btn-name" disabled>Enter Name</button>
+    <button id="btn-lines" disabled>+4 Lines (Trigger Dialog)</button>
+    <button id="btn-reset" class="secondary">Reset</button>
+  </div>
+
+  <!-- Quest Configuration -->
+  <h2>⚙️ Quest Configuration (Customizable)</h2>
+  <div class="quest-config">
+    <label>NPC Name:</label>
+    <input type="text" id="npc-name" value="The Wise Wizard">
+
+    <label>NPC Personality:</label>
+    <textarea id="npc-personality">an ancient wizard who guards the secrets of the falling blocks. You speak in riddles and appreciate clever answers.</textarea>
+
+    <label>Quest Goal:</label>
+    <textarea id="quest-goal">The player must prove they understand the wisdom of the blocks by answering your riddles wisely. Judge their responses and guide them toward enlightenment.</textarea>
+  </div>
+
+  <!-- Integration Code -->
+  <h2>📋 Integration Code for Your Bricks Game</h2>
+  <pre>
+// 1. Include the script
+&lt;script src="npc-dialog.js">&lt;/script>
+
+// 2. Create NPC dialog (after model is loaded)
+const npc = new NPCDialog({
+  engine: webllmEngine,
+  npcName: "The Wise Wizard",
+  npcPersonality: "an ancient wizard...",
+  questGoal: "Player must answer riddles...",
+  maxTurns: 5,
+  onMissionComplete: () => {
+    // Quest done! Add bonus points, etc.
+    addBonusPoints(500);
+  },
+  onDialogClose: (success) => {
+    resumeGame();
+  }
+});
+
+// 3. At game start - get player name
+npc.showNameInput((name) => {
+  startGame();
+});
+
+// 4. When 4 lines are cleared:
+if (linesCleared >= 4) {
+  pauseGame();
+  npc.startDialog((success) => {
+    if (success) questsCompleted++;
+  });
+  linesCleared = 0;
+}
+
+// 5. Check total quests for win condition
+if (questsCompleted >= 3) {
+  showVictoryScreen();
+}</pre>
+
+  <script type="module">
+    import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm";
+
+    // Load NPC Dialog script
+    const script = document.createElement('script');
+    script.src = 'npc-dialog.js';
+    document.head.appendChild(script);
+
+    // Wait for script to load
+    await new Promise(resolve => {
+      script.onload = resolve;
+    });
+
+    // DOM elements
+    const modelSelect = document.getElementById('model-select');
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
+    const status = document.getElementById('status');
+    const btnLoad = document.getElementById('btn-load');
+    const btnName = document.getElementById('btn-name');
+    const btnLines = document.getElementById('btn-lines');
+    const btnReset = document.getElementById('btn-reset');
+    const linesCount = document.getElementById('lines-count');
+    const questsCount = document.getElementById('quests-count');
+    const playerNameEl = document.getElementById('player-name');
+
+    // State
+    let engine = null;
+    let npc = null;
+    let lines = 0;
+    let quests = 0;
+
+    // Load model
+    btnLoad.onclick = async () => {
+      btnLoad.disabled = true;
+      modelSelect.disabled = true;
+      progressBar.classList.add('visible');
+
+      try {
+        status.textContent = 'Loading model...';
+
+        engine = await webllm.CreateMLCEngine(modelSelect.value, {
+          initProgressCallback: (report) => {
+            progressFill.style.width = (report.progress * 100) + '%';
+            status.textContent = report.text;
+          }
+        });
+
+        progressBar.classList.remove('visible');
+        status.textContent = 'Model loaded! Ready to play.';
+
+        // Create NPC dialog
+        npc = new NPCDialog({
+          engine: engine,
+          npcName: document.getElementById('npc-name').value,
+          npcPersonality: document.getElementById('npc-personality').value,
+          questGoal: document.getElementById('quest-goal').value,
+          maxTurns: 5,
+          onNameSet: (name) => {
+            playerNameEl.textContent = name;
+          },
+          onMissionComplete: () => {
+            quests++;
+            questsCount.textContent = quests;
+            status.textContent = `Quest complete! Total: ${quests}`;
+          },
+          onDialogClose: (success) => {
+            status.textContent = success ? 'Quest successful!' : 'Quest failed. Try again!';
+          }
+        });
+
+        btnName.disabled = false;
+
+      } catch (error) {
+        console.error(error);
+        status.textContent = 'Error: ' + error.message;
+        btnLoad.disabled = false;
+        modelSelect.disabled = false;
+        progressBar.classList.remove('visible');
+      }
+    };
+
+    // Enter name
+    btnName.onclick = () => {
+      if (npc) {
+        npc.showNameInput(() => {
+          btnLines.disabled = false;
+          status.textContent = `Welcome, ${npc.playerName}! Clear 4 lines to meet the wizard.`;
+        });
+      }
+    };
+
+    // Simulate lines cleared
+    btnLines.onclick = () => {
+      if (!npc || !npc.playerName) {
+        alert('Enter your name first!');
+        return;
+      }
+
+      lines += 4;
+      linesCount.textContent = lines;
+
+      // Update NPC config from form
+      npc.npcName = document.getElementById('npc-name').value;
+      npc.npcPersonality = document.getElementById('npc-personality').value;
+      npc.questGoal = document.getElementById('quest-goal').value;
+
+      status.textContent = 'The wizard appears...';
+      npc.startDialog();
+    };
+
+    // Reset
+    btnReset.onclick = () => {
+      lines = 0;
+      quests = 0;
+      linesCount.textContent = '0';
+      questsCount.textContent = '0';
+      playerNameEl.textContent = '-';
+      if (npc) {
+        npc.reset();
+        npc.playerName = '';
+      }
+      btnLines.disabled = true;
+      status.textContent = 'Game reset. Enter name to start again.';
+    };
+  </script>
+</body>
+</html>
