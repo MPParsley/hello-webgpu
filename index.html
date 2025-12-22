@@ -1,90 +1,816 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Edge NLP Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dragon Quest - Text Adventure</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 1rem; }
-    select, button { padding: 0.5rem 1rem; margin: 0.5rem 0.5rem 0.5rem 0; }
-    .model-info { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
-    pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; white-space: pre-wrap; }
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 16px;
+      background: #f5f5f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 32px);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      color: #222;
+    }
+
+    /* Error message styling */
+    .error {
+      background: #fee;
+      border: 1px solid #c00;
+      color: #900;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .error h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+    }
+
+    .error p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    /* Info box */
+    .info {
+      background: #e8f4ff;
+      border: 1px solid #b8d4ff;
+      color: #0055aa;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+    }
+
+    /* Model selector */
+    .model-selector {
+      margin-bottom: 16px;
+    }
+
+    .model-selector label {
+      display: block;
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .model-selector select {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .model-selector select:disabled {
+      background: #f0f0f0;
+      cursor: not-allowed;
+    }
+
+    /* Progress section */
+    .progress-section {
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .progress-section.visible {
+      display: block;
+    }
+
+    .progress-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-container {
+      background: #e0e0e0;
+      border-radius: 8px;
+      height: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, #0066cc, #00aaff);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 8px;
+    }
+
+    .progress-percentage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .progress-status {
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 8px;
+      min-height: 1.5em;
+      word-break: break-word;
+    }
+
+    /* Chat container */
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 300px;
+    }
+
+    /* Chat messages */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      background: #fafafa;
+      min-height: 200px;
+      max-height: 400px;
+    }
+
+    .message {
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 85%;
+      word-wrap: break-word;
+    }
+
+    .message:last-child {
+      margin-bottom: 0;
+    }
+
+    .message.user {
+      background: #0066cc;
+      color: white;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant {
+      background: #e9e9e9;
+      color: #333;
+      margin-right: auto;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message.assistant.typing::after {
+      content: "▊";
+      animation: blink 0.8s infinite;
+    }
+
+    .message-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      opacity: 0.7;
+    }
+
+    .message-content {
+      white-space: pre-wrap;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.1);
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .message:hover .copy-btn {
+      opacity: 1;
+    }
+
+    .copy-btn:hover {
+      background: rgba(0,0,0,0.2);
+    }
+
+    .message {
+      position: relative;
+    }
+
+    .empty-chat {
+      color: #999;
+      text-align: center;
+      padding: 40px;
+      font-style: italic;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* Input section */
+    .input-section {
+      display: flex;
+      gap: 12px;
+    }
+
+    .input-section textarea {
+      flex: 1;
+      padding: 14px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      resize: none;
+      font-family: inherit;
+      min-height: 52px;
+      max-height: 120px;
+    }
+
+    .input-section textarea:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+
+    .input-section textarea:disabled {
+      background: #f0f0f0;
+    }
+
+    .input-section button {
+      width: auto;
+      padding: 14px 24px;
+      min-width: 100px;
+    }
+
+    /* Clear button */
+    .clear-btn {
+      background: #666;
+      margin-top: 12px;
+      padding: 10px 16px !important;
+      font-size: 0.9rem !important;
+      min-height: 40px !important;
+    }
+
+    .clear-btn:hover:not(:disabled) {
+      background: #555;
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Status indicator */
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+    }
+
+    .status-dot.ready {
+      background: #4caf50;
+    }
+
+    .status-dot.loading {
+      background: #ff9800;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
   </style>
 </head>
 <body>
-  <h1>Edge NLP – Hello World</h1>
+  <div class="container">
+    <h1>Dragon Quest - Text Adventure</h1>
 
-  <label for="model">Kies model:</label>
-  <select id="model">
-    <option value="SmolLM2-135M-Instruct-q0f16-MLC" data-size="360MB" data-params="135M">
-      SmolLM2-135M-Instruct (135M params, ~360MB) ⭐ Lightest
-    </option>
-    <option value="SmolLM2-360M-Instruct-q0f16-MLC" data-size="720MB" data-params="360M">
-      SmolLM2-360M-Instruct (360M params, ~720MB)
-    </option>
-    <option value="TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC" data-size="670MB" data-params="1.1B">
-      TinyLlama-1.1B-Chat (1.1B params, ~670MB)
-    </option>
-    <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" data-size="400MB" data-params="0.5B">
-      Qwen2.5-0.5B-Instruct (0.5B params, ~400MB)
-    </option>
-    <option value="phi-2-q4f16_1-MLC" data-size="1.5GB" data-params="2.7B">
-      Phi-2 (2.7B params, ~1.5GB)
-    </option>
-  </select>
-  <div class="model-info" id="model-info">SmolLM2-135M: Ultra-compact SOTA model, ideal for NPC/Zork-style dialogue</div>
+    <!-- Error container (hidden by default) -->
+    <div id="error-container" class="hidden"></div>
 
-  <br>
-  <button id="run">Zeg hallo</button>
-  <pre id="output"></pre>
+    <!-- Info box -->
+    <div class="info" id="info-box">
+      A text adventure game running locally in your browser!
+      Type what you want to do and press Send.
+    </div>
+
+    <!-- Model selector -->
+    <div class="model-selector">
+      <label for="model-select">Choose a model:</label>
+      <select id="model-select">
+        <option value="SmolLM2-135M-Instruct-q0f16-MLC">SmolLM2-135M (~360MB, tiny)</option>
+        <option value="SmolLM2-360M-Instruct-q0f16-MLC">SmolLM2-360M (~720MB, small)</option>
+        <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC" selected>SmolLM2-1.7B (~1GB, good)</option>
+        <option value="phi-2-q4f16_1-MLC">Phi-2 (~1.6GB, fast)</option>
+        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5 Mini (~2.2GB, best)</option>
+        <option value="Qwen2.5-3B-Instruct-q4f16_1-MLC">Qwen 2.5 3B (~2.5GB, powerful)</option>
+      </select>
+    </div>
+
+    <!-- Progress section -->
+    <div class="progress-section" id="progress-section">
+      <div class="progress-label">Loading model...</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+        <span class="progress-percentage" id="progress-percentage">0%</span>
+      </div>
+      <div class="progress-status" id="progress-status">Initializing...</div>
+    </div>
+
+    <!-- Status indicator -->
+    <div class="status-indicator" id="status-indicator">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Model not loaded</span>
+    </div>
+
+    <!-- Chat container -->
+    <div class="chat-container">
+      <!-- Chat messages -->
+      <div class="chat-messages" id="chat-messages">
+        <div class="empty-chat" id="empty-chat">
+          Type "start" to begin your adventure!
+        </div>
+      </div>
+
+      <!-- Input section -->
+      <div class="input-section">
+        <textarea
+          id="user-input"
+          placeholder="What do you want to do?"
+          rows="1"
+          disabled
+        ></textarea>
+        <button id="send-btn" disabled>Send</button>
+      </div>
+
+      <!-- Clear button -->
+      <button id="clear-btn" class="clear-btn">Restart Adventure</button>
+    </div>
+  </div>
 
   <script type="module">
-    import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+    import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm/+esm";
 
-    const output = document.getElementById("output");
-    const button = document.getElementById("run");
-    const modelSelect = document.getElementById("model");
-    const modelInfo = document.getElementById("model-info");
+    // DOM elements
+    const chatMessages = document.getElementById("chat-messages");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const clearBtn = document.getElementById("clear-btn");
+    const errorContainer = document.getElementById("error-container");
+    const progressSection = document.getElementById("progress-section");
+    const progressBar = document.getElementById("progress-bar");
+    const progressPercentage = document.getElementById("progress-percentage");
+    const progressStatus = document.getElementById("progress-status");
+    const infoBox = document.getElementById("info-box");
+    const modelSelect = document.getElementById("model-select");
+    const statusDot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
+    const emptyChat = document.getElementById("empty-chat");
 
-    const modelDescriptions = {
-      "SmolLM2-135M-Instruct-q0f16-MLC": "SmolLM2-135M: Ultra-compact SOTA model, ideal for NPC/Zork-style dialogue",
-      "SmolLM2-360M-Instruct-q0f16-MLC": "SmolLM2-360M: Better quality than 135M, still very lightweight",
-      "TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC": "TinyLlama: Well-balanced compact model with good reasoning",
-      "Qwen2.5-0.5B-Instruct-q4f16_1-MLC": "Qwen2.5-0.5B: Alibaba's smallest model, great multilingual support",
-      "phi-2-q4f16_1-MLC": "Phi-2: Microsoft's compact model with strong reasoning abilities"
-    };
+    // State
+    let cachedEngine = null;
+    let cachedModelId = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
+    let isGenerating = false;
+    // ============================================================
+    // GAME SCENARIOS - EASY TO EDIT!
+    // ============================================================
 
-    modelSelect.onchange = () => {
-      modelInfo.textContent = modelDescriptions[modelSelect.value] || "";
-    };
+    // Simple game for small models (SmolLM) - just needs short responses
+    const GAME_SIMPLE = `Reply with only: Yes, No, or Maybe. Nothing else. One word only.`;
 
-    let engine = null;
-    let currentModel = null;
+    // Advanced game for larger models (Phi, Qwen)
+    const GAME_QUEST = `You run a text adventure game.
 
-    button.onclick = async () => {
+RULES:
+1. Describe the scene in 1-2 sentences
+2. End EVERY response with exactly 3 choices numbered 1, 2, 3
+3. Wait for player to choose - never decide for them
+4. Keep responses under 50 words
+
+WORLD: Village, Forest, Cave (friendly dragon inside), Tower (wizard)
+PLAYER: Hero with sword and backpack
+
+FORMAT EXAMPLE:
+"You stand in the village. An old man points toward the dark forest.
+
+What do you do?
+1. Enter the forest
+2. Talk to the old man
+3. Look around the village"
+
+START: Player is in the village square. A villager mentions a dragon.`;
+
+    // Check if model is too small for quest game
+    function isTinyModel(modelId) {
+      return modelId.includes("SmolLM2-135M") || modelId.includes("SmolLM2-360M");
+    }
+
+    // Choose scenario based on model
+    function getScenarioForModel(modelId) {
+      if (isTinyModel(modelId)) {
+        return GAME_SIMPLE;
+      }
+      return GAME_QUEST;
+    }
+
+    let conversationHistory = [
+      { role: "system", content: getScenarioForModel(modelSelect.value) }
+    ];
+
+    // Check WebGPU support
+    function checkWebGPU() {
+      if (!("gpu" in navigator)) {
+        return {
+          supported: false,
+          reason: "WebGPU not available",
+          details: "Your browser does not support WebGPU. Try Chrome 113+, Edge 113+, or Safari 18+ (macOS Sonoma / iOS 18)."
+        };
+      }
+      return { supported: true };
+    }
+
+    // Show error message (fatal)
+    function showError(title, message) {
+      errorContainer.innerHTML = `
+        <div class="error">
+          <h2>${title}</h2>
+          <p>${message}</p>
+        </div>
+      `;
+      errorContainer.classList.remove("hidden");
+      infoBox.classList.add("hidden");
+    }
+
+    // Update progress UI
+    function updateProgress(progress, text) {
+      const percent = Math.round(progress * 100);
+      progressBar.style.width = `${percent}%`;
+      progressPercentage.textContent = `${percent}%`;
+      progressStatus.textContent = text || "Loading...";
+    }
+
+    // Update status indicator
+    function setStatus(status, text) {
+      statusDot.className = "status-dot " + status;
+      statusText.textContent = text;
+    }
+
+    // Copy text to clipboard
+    async function copyToClipboard(text, button) {
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copied!";
+        setTimeout(() => button.textContent = "Copy", 1500);
+      } catch (e) {
+        button.textContent = "Failed";
+        setTimeout(() => button.textContent = "Copy", 1500);
+      }
+    }
+
+    // Add message to chat
+    function addMessage(role, content, isStreaming = false) {
+      if (emptyChat) {
+        emptyChat.remove();
+      }
+
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `message ${role}` + (isStreaming ? " typing" : "");
+
+      const labelDiv = document.createElement("div");
+      labelDiv.className = "message-label";
+      labelDiv.textContent = role === "user" ? "You" : "Assistant";
+
+      const contentDiv = document.createElement("div");
+      contentDiv.className = "message-content";
+      contentDiv.textContent = content;
+
+      // Add copy button
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "copy-btn";
+      copyBtn.textContent = "Copy";
+      copyBtn.onclick = () => copyToClipboard(contentDiv.textContent, copyBtn);
+
+      messageDiv.appendChild(labelDiv);
+      messageDiv.appendChild(contentDiv);
+      messageDiv.appendChild(copyBtn);
+      chatMessages.appendChild(messageDiv);
+
+      // Scroll to bottom
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      return contentDiv;
+    }
+
+    // Update last message content (for streaming)
+    function updateLastMessage(content, isComplete = false) {
+      const lastMessage = chatMessages.querySelector(".message:last-child");
+      if (lastMessage) {
+        const contentDiv = lastMessage.querySelector(".message-content");
+        if (contentDiv) {
+          contentDiv.textContent = content;
+        }
+        if (isComplete) {
+          lastMessage.classList.remove("typing");
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    }
+
+    // Load model
+    async function loadModel() {
       const selectedModel = modelSelect.value;
 
-      try {
-        if (!engine || currentModel !== selectedModel) {
-          output.textContent = `Model laden: ${selectedModel}… (eerste keer duurt even)`;
-          engine = new webllm.MLCEngine();
-          await engine.reload(selectedModel);
-          currentModel = selectedModel;
+      if (cachedEngine && cachedModelId === selectedModel) {
+        // Verify engine is still valid
+        try {
+          // Quick check if engine is disposed
+          if (cachedEngine.chat) {
+            return cachedEngine;
+          }
+        } catch (e) {
+          // Engine is disposed, clear cache
+          console.log("Cached engine disposed, reloading...");
+          cachedEngine = null;
+          cachedModelId = null;
         }
+      }
 
-        output.textContent = "Genereren…";
+      // Dispose old engine if switching models
+      if (cachedEngine && cachedModelId !== selectedModel) {
+        try {
+          await cachedEngine.unload();
+        } catch (e) {
+          // Ignore disposal errors
+        }
+        cachedEngine = null;
+        cachedModelId = null;
+      }
 
-        const reply = await engine.chat.completions.create({
-          messages: [
-            { role: "system", content: "Je bent een vriendelijk NPC in een tekstavontuur zoals Zork. Geef korte, sfeervolle antwoorden." },
-            { role: "user", content: "Zeg hallo vanuit de browser." }
-          ],
+      setStatus("loading", "Loading model...");
+      progressSection.classList.add("visible");
+      updateProgress(0, "Initializing model...");
+      modelSelect.disabled = true;
+
+      try {
+        const engine = await webllm.CreateMLCEngine(selectedModel, {
+          initProgressCallback: (report) => {
+            updateProgress(report.progress, report.text);
+          }
         });
 
-        output.textContent = reply.choices[0].message.content;
-      } catch (err) {
-        output.textContent = `Fout: ${err.message}`;
+        cachedEngine = engine;
+        cachedModelId = selectedModel;
+        retryCount = 0;
+
+        progressSection.classList.remove("visible");
+        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} loaded`);
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        userInput.focus();
+
+        return engine;
+
+      } catch (error) {
+        console.error("Load error:", error);
+        const errorMsg = error.message || String(error);
+
+        if ((errorMsg.includes("Load failed") || errorMsg.includes("fetch")) && retryCount < MAX_RETRIES) {
+          retryCount++;
+          const delay = retryCount * 2000;
+          updateProgress(0, `Download failed. Retrying (${retryCount}/${MAX_RETRIES})...`);
+          await new Promise(r => setTimeout(r, delay));
+          return loadModel();
+        }
+
+        progressSection.classList.remove("visible");
+        setStatus("", "Loading failed");
+        modelSelect.disabled = false;
+        throw error;
       }
-    };
+    }
+
+    // Send message
+    async function sendMessage() {
+      const userText = userInput.value.trim();
+      if (!userText || isGenerating) return;
+
+      isGenerating = true;
+      userInput.value = "";
+      userInput.disabled = true;
+      sendBtn.disabled = true;
+      modelSelect.disabled = true;
+
+      // Add user message to UI and history
+      addMessage("user", userText);
+      conversationHistory.push({ role: "user", content: userText });
+
+      try {
+        // Load model if needed
+        const engine = await loadModel();
+
+        // Add assistant message placeholder
+        addMessage("assistant", "", true);
+        setStatus("loading", "Generating response...");
+
+        // Create chat completion with streaming
+        const isTiny = isTinyModel(modelSelect.value);
+        const stream = await engine.chat.completions.create({
+          messages: conversationHistory,
+          stream: true,
+          max_tokens: isTiny ? 10 : 500
+        });
+
+        // Stream tokens
+        let fullResponse = "";
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content || "";
+          fullResponse += delta;
+          updateLastMessage(fullResponse);
+        }
+
+        // Finalize
+        updateLastMessage(fullResponse, true);
+        conversationHistory.push({ role: "assistant", content: fullResponse });
+        setStatus("ready", `${modelSelect.options[modelSelect.selectedIndex].text.split(" (")[0]} loaded`);
+
+      } catch (error) {
+        console.error("Error:", error);
+        const errorMsg = error.message || String(error);
+
+        // Check if engine was disposed - clear cache and retry once
+        if (errorMsg.includes("disposed") || errorMsg.includes("deleted object")) {
+          console.log("Engine disposed, clearing cache and retrying...");
+          cachedEngine = null;
+          cachedModelId = null;
+
+          // Remove the failed assistant message
+          const lastMsg = chatMessages.querySelector(".message:last-child");
+          if (lastMsg && lastMsg.classList.contains("assistant")) {
+            lastMsg.remove();
+          }
+          // Remove user message from history (will be re-added on retry)
+          conversationHistory.pop();
+
+          // Retry the message
+          isGenerating = false;
+          userInput.value = userText;
+          setTimeout(() => sendMessage(), 100);
+          return;
+        }
+
+        updateLastMessage(`Error: ${error.message}`, true);
+        setStatus("", "Error occurred");
+      } finally {
+        isGenerating = false;
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        modelSelect.disabled = cachedEngine !== null;
+        userInput.focus();
+      }
+    }
+
+    // Clear chat
+    function clearChat() {
+      const isSimple = isTinyModel(modelSelect.value);
+      chatMessages.innerHTML = `
+        <div class="empty-chat" id="empty-chat">
+          ${isSimple ? 'Ask the crystal ball a question!' : 'Type "start" to begin your adventure!'}
+        </div>
+      `;
+      conversationHistory = [{ role: "system", content: getScenarioForModel(modelSelect.value) }];
+    }
+
+    // Auto-resize textarea
+    function autoResize() {
+      userInput.style.height = "auto";
+      userInput.style.height = Math.min(userInput.scrollHeight, 120) + "px";
+    }
+
+    // Initialize
+    async function init() {
+      const webgpuCheck = checkWebGPU();
+      if (!webgpuCheck.supported) {
+        showError(webgpuCheck.reason, webgpuCheck.details);
+        return;
+      }
+
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          showError(
+            "WebGPU not available",
+            "Your browser supports WebGPU, but no suitable GPU was found."
+          );
+          return;
+        }
+      } catch (e) {
+        showError("WebGPU error", `Could not initialize WebGPU: ${e.message}`);
+        return;
+      }
+
+      // Enable input and auto-load model
+      setStatus("", "Click to load model");
+      userInput.disabled = false;
+      sendBtn.disabled = false;
+
+      // Set initial UI based on default model
+      updateGameUI();
+    }
+
+    // Event listeners
+    sendBtn.onclick = sendMessage;
+    clearBtn.onclick = clearChat;
+
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    userInput.addEventListener("input", autoResize);
+
+    modelSelect.addEventListener("change", () => {
+      // Reset engine when model changes
+      if (cachedModelId !== modelSelect.value) {
+        cachedEngine = null;
+        cachedModelId = null;
+        setStatus("", "New model selected");
+      }
+      // Update UI for game type
+      updateGameUI();
+      // Reset conversation with new scenario
+      conversationHistory = [{ role: "system", content: getScenarioForModel(modelSelect.value) }];
+    });
+
+    // Update UI based on selected model/game type
+    function updateGameUI() {
+      const isSimple = isTinyModel(modelSelect.value);
+      document.querySelector("h1").textContent = isSimple ? "Magic Crystal Ball" : "Dragon Quest - Text Adventure";
+      document.title = isSimple ? "Magic Crystal Ball" : "Dragon Quest - Text Adventure";
+      infoBox.textContent = isSimple
+        ? "Ask the magic crystal ball any yes/no question!"
+        : "A text adventure game running locally in your browser!";
+      userInput.placeholder = isSimple ? "Ask a question..." : "What do you want to do?";
+      clearBtn.textContent = isSimple ? "Ask New Question" : "Restart Adventure";
+      const empty = document.getElementById("empty-chat");
+      if (empty) {
+        empty.textContent = isSimple ? "Ask the crystal ball a question!" : 'Type "start" to begin your adventure!';
+      }
+    }
+
+    // Start
+    init();
   </script>
 </body>
 </html>
