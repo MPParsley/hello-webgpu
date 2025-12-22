@@ -396,10 +396,19 @@
     const MAX_RETRIES = 2;
     let isGenerating = false;
     // ============================================================
-    // GAME SCENARIO - EASY TO EDIT!
-    // Change the story below to create your own adventure!
+    // GAME SCENARIOS - EASY TO EDIT!
     // ============================================================
-    const GAME_SCENARIO = `You run a simple text adventure game.
+
+    // Simple game for small models (SmolLM) - just needs short responses
+    const GAME_SIMPLE = `You are a magic crystal ball.
+Give short mysterious answers (1 sentence max).
+Be fun and silly. Examples:
+- "The stars say... maybe!"
+- "I see cheese in your future."
+- "Ask again after lunch."`;
+
+    // Advanced game for larger models (Phi, Qwen)
+    const GAME_QUEST = `You run a text adventure game.
 
 RULES:
 1. Describe the scene in 1-2 sentences
@@ -420,8 +429,16 @@ What do you do?
 
 START: Player is in the village square. A villager mentions a dragon.`;
 
+    // Choose scenario based on model
+    function getScenarioForModel(modelId) {
+      if (modelId.includes("SmolLM")) {
+        return GAME_SIMPLE;
+      }
+      return GAME_QUEST;
+    }
+
     let conversationHistory = [
-      { role: "system", content: GAME_SCENARIO }
+      { role: "system", content: getScenarioForModel(modelSelect.value) }
     ];
 
     // Check WebGPU support
@@ -658,12 +675,13 @@ START: Player is in the village square. A villager mentions a dragon.`;
 
     // Clear chat
     function clearChat() {
+      const isSimple = modelSelect.value.includes("SmolLM");
       chatMessages.innerHTML = `
         <div class="empty-chat" id="empty-chat">
-          Type "start" to begin your adventure!
+          ${isSimple ? 'Ask the crystal ball a question!' : 'Type "start" to begin your adventure!'}
         </div>
       `;
-      conversationHistory = [conversationHistory[0]]; // Keep system prompt
+      conversationHistory = [{ role: "system", content: getScenarioForModel(modelSelect.value) }];
     }
 
     // Auto-resize textarea
@@ -698,6 +716,9 @@ START: Player is in the village square. A villager mentions a dragon.`;
       setStatus("", "Click to load model");
       userInput.disabled = false;
       sendBtn.disabled = false;
+
+      // Set initial UI based on default model
+      updateGameUI();
     }
 
     // Event listeners
@@ -720,7 +741,27 @@ START: Player is in the village square. A villager mentions a dragon.`;
         cachedModelId = null;
         setStatus("", "New model selected");
       }
+      // Update UI for game type
+      updateGameUI();
+      // Reset conversation with new scenario
+      conversationHistory = [{ role: "system", content: getScenarioForModel(modelSelect.value) }];
     });
+
+    // Update UI based on selected model/game type
+    function updateGameUI() {
+      const isSimple = modelSelect.value.includes("SmolLM");
+      document.querySelector("h1").textContent = isSimple ? "Magic Crystal Ball" : "Dragon Quest - Text Adventure";
+      document.title = isSimple ? "Magic Crystal Ball" : "Dragon Quest - Text Adventure";
+      infoBox.textContent = isSimple
+        ? "Ask the magic crystal ball any yes/no question!"
+        : "A text adventure game running locally in your browser!";
+      userInput.placeholder = isSimple ? "Ask a question..." : "What do you want to do?";
+      clearBtn.textContent = isSimple ? "Ask New Question" : "Restart Adventure";
+      const empty = document.getElementById("empty-chat");
+      if (empty) {
+        empty.textContent = isSimple ? "Ask the crystal ball a question!" : 'Type "start" to begin your adventure!';
+      }
+    }
 
     // Start
     init();
